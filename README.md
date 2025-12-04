@@ -1,0 +1,2 @@
+# AHMEDTECH
+for all techinfo
