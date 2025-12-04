@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHMEDTECH - Private Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, setDoc, getDoc, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbootixf9ePSd7wQ_jiVBYOzjBCjsWSP0",
+  authDomain: "ahmedtech-3a37a.firebaseapp.com",
+  projectId: "ahmedtech-3a37a",
+  storageBucket: "ahmedtech-3a37a.firebasestorage.app",
+  messagingSenderId: "6463542760",
+  appId: "1:6463542760:web:249becec2230a2077f405d",
+  measurementId: "G-7BMHGH1060"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Make Firebase available globally
+        window.firebase = {
+            app: app,
+            auth: auth,
+            db: db,
+            storage: storage,
+            analytics: analytics,
+            firestore: {
+                collection: collection,
+                addDoc: addDoc,
+                getDocs: getDocs,
+                updateDoc: updateDoc,
+                deleteDoc: deleteDoc,
+                doc: doc,
+                query: query,
+                where: where,
+                setDoc: setDoc,
+                getDoc: getDoc,
+                orderBy: orderBy,
+                serverTimestamp: serverTimestamp
+            },
+            authMethods: {
+                signInWithEmailAndPassword: signInWithEmailAndPassword,
+                createUserWithEmailAndPassword: createUserWithEmailAndPassword,
+                signOut: signOut,
+                onAuthStateChanged: onAuthStateChanged,
+                sendPasswordResetEmail: sendPasswordResetEmail
+            },
+            storageMethods: {
+                ref: ref,
+                uploadBytes: uploadBytes,
+                getDownloadURL: getDownloadURL
+            }
+        };
+
+        console.log("🔥 Firebase initialized successfully!");
+        
+        // Monitor auth state
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("✅ User is signed in:", user.email);
+                window.currentUser = user;
+            } else {
+                console.log("❌ No user is signed in");
+                window.currentUser = null;
+            }
+        });
+    </script>
+</head>
+<body>
+
+<div class="container" id="auth">
+    <div class="phantom-logo">
+        <div class="phantom-text">THE PHANTOM</div>
+        <div class="dz-iptv-main">DZ-IPTV</div>
+        <div class="by-ahmed">BY AHMED-DZ</div>
+    </div>
+
+    <div class="logo-circle"><i class="fas fa-shield-alt logo-icon"></i></div>
+    <h1 class="title">AHMEDTECH</h1>
+
+    <div class="datetime-container">
+        <div class="current-date" id="currentDate">Loading date...</div>
+        <div class="current-time" id="currentTime">Loading time...</div>
+    </div>
+
+    <div class="choice-group">
+        <label class="choice-label"><input type="radio" name="auth" value="login" checked><span>Login</span></label>
+    </div>
+
+    <div class="input-group">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="Enter username" autocomplete="username">
+    </div>
+    <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+    </div>
+
+    <div class="security-features" id="loginSecurity" style="display: none;">
+        <div class="security-title">Security Status</div>
+        <div class="security-status">
+            <span>Encrypted Storage</span>
+            <div class="status-indicator status-active"></div>
+        </div>
+        <div class="security-status">
+            <span>Brute Force Protection</span>
+            <div class="status-indicator status-active"></div>
+        </div>
+        <div class="security-status">
+            <span>XSS Protection</span>
+            <div class="status-indicator status-active"></div>
+        </div>
+    </div>
+
+    <button class="neon-btn" onclick="auth()">Login</button>
+
+    <p style="margin-top:8px; font-size:0.85rem"><a href="#" onclick="showForgotPasswordModal()" style="color:var(--accent);text-decoration:none; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);">Forgot Password?</a></p>
+</div>
+
+<!-- Main Dashboard -->
+<div class="dashboard hidden" id="dash">
+    <div class="phantom-logo">
+        <div class="phantom-text">THE PHANTOM</div>
+        <div class="dz-iptv-main">DZ-IPTV</div>
+        <div class="by-ahmed">BY AHMED-DZ</div>
+    </div>
+
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-user-circle logo-icon"></i></div>
+    <h1 class="title">Dashboard</h1>
+    
+    <div class="datetime-container">
+        <div class="current-date" id="dashboardDate">Loading date...</div>
+        <div class="current-time" id="dashboardTime">Loading time...</div>
+    </div>
+    
+    <h2 style="color:var(--accent);margin:15px 0; font-size:1rem; text-shadow: 0 0 15px rgba(0, 255, 255, 0.6);">Welcome <span id="welcomeUser"></span></h2>
+    
+    <div class="security-features" id="dashboardSecurity" style="display: none;">
+        <div class="security-title">Session Security</div>
+        <div class="security-status">
+            <span>Last Login</span>
+            <span id="lastLoginTime">Just now</span>
+        </div>
+        <div class="security-status">
+            <span>Session Duration</span>
+            <span id="sessionDuration">0 minutes</span>
+        </div>
+        <div class="security-status">
+            <span>IP Protection</span>
+            <div class="status-indicator status-active"></div>
+        </div>
+    </div>
+    
+    <div class="cards-grid">
+        <div class="section-card" onclick="show('macs')">
+            <i class="fas fa-satellite-dish" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Free MACs</h3>
+        </div>
+        
+        <div class="section-card" onclick="show('xtream')">
+            <i class="fas fa-server" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Server Xtream</h3>
+        </div>
+        
+        <div class="section-card" onclick="show('users')" id="adminSection" style="display:none">
+            <i class="fas fa-users" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">User Management</h3>
+        </div>
+        
+        <div class="section-card" onclick="show('videos')">
+            <i class="fas fa-video" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Tutorial Videos</h3>
+        </div>
+        
+        <div class="section-card" onclick="show('stats')" id="statsSection" style="display:none">
+            <i class="fas fa-chart-bar" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Statistics</h3>
+        </div>
+        
+        <div class="section-card" onclick="show('settings')" id="settingsSection" style="display:none">
+            <i class="fas fa-cogs" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Settings</h3>
+        </div>
+        
+        <!-- إضافة أقسام جديدة للميزات المضافة -->
+        <div class="section-card" onclick="show('liveChat')">
+            <i class="fas fa-comments" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Live Chat</h3>
+        </div>
+        
+        <div class="section-card" onclick="show('knowledgeBase')">
+            <i class="fas fa-book" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Knowledge Base</h3>
+        </div>
+        
+        <div class="section-card" onclick="show('ticketSystem')">
+            <i class="fas fa-ticket-alt" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Ticket System</h3>
+        </div>
+        
+        <div class="section-card" onclick="window.open('https://t.me/+IvjWx9QcwyQxYmI8','_blank')">
+            <i class="fas fa-paper-plane" style="font-size:2.2rem;"></i>
+            <h3 class="section-title">Telegram Channel</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Free MACs Page -->
+<div class="dashboard hidden" id="macs">
+    <div class="phantom-logo">
+        <div class="phantom-text">THE PHANTOM</div>
+        <div class="dz-iptv-main">DZ-IPTV</div>
+        <div class="by-ahmed">BY AHMED-DZ</div>
+    </div>
+
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-satellite-dish logo-icon"></i></div>
+    <h1 class="title">Free MACs</h1>
+    
+    <button class="add-portal-btn" id="addPortalBtn" style="display:none" onclick="togglePortalForm()">
+        <i class="fas fa-plus"></i> Add New Portal
+    </button>
+    
+    <div class="portal-form" id="portalForm" style="display:none">
+        <h3 style="color:var(--accent);margin-bottom:12px; font-size:0.95rem; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);" id="portalFormTitle">Add New Portal</h3>
+        <input type="text" id="portalName" placeholder="Portal name (e.g., Free Package)">
+        <input type="text" id="portalServer" placeholder="Server URL (e.g., http://foxx-tv.com:80/c/)">
+        <input type="text" id="portalMac" placeholder="MAC Address (e.g., 00:1A:79:00:00:00)">
+        <div class="portal-form-buttons">
+            <button class="save-portal-btn" id="savePortalBtn" onclick="savePortal()">Save Portal</button>
+            <button class="update-portal-btn" id="updatePortalBtn" style="display:none" onclick="updatePortal()">Update Portal</button>
+            <button class="cancel-portal-btn" onclick="togglePortalForm()">Cancel</button>
+        </div>
+    </div>
+        
+    <div id="adminPortals"></div>
+</div>
+
+<!-- Server Xtream Page -->
+<div class="dashboard hidden" id="xtream">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-server logo-icon"></i></div>
+    <h1 class="title">Server Xtream</h1>
+    
+    <div class="phantom-logo" style="max-width: 300px; margin: 10px auto 20px;">
+        <div class="phantom-text">THE PHANTOM</div>
+        <div class="dz-iptv-main">XTREAM CODES</div>
+        <div class="by-ahmed">BY AHMED-DZ</div>
+    </div>
+    
+    <button class="add-xtream-btn" id="addXtreamBtn" style="display:none" onclick="toggleXtreamForm()">
+        <i class="fas fa-plus"></i> Add New Xtream Server
+    </button>
+    
+    <div class="xtream-form" id="xtreamForm" style="display:none">
+        <h3 style="color:var(--accent);margin-bottom:12px; font-size:0.95rem; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);" id="xtreamFormTitle">Add New Xtream Server</h3>
+        <input type="text" id="xtreamName" placeholder="Server name (e.g., Premium Server)">
+        <input type="text" id="xtreamServer" placeholder="Server URL (e.g., http://example.com:8080)">
+        <input type="text" id="xtreamUsername" placeholder="Username">
+        <input type="text" id="xtreamPassword" placeholder="Password">
+        <div class="xtream-form-buttons">
+            <button class="save-xtream-btn" id="saveXtreamBtn" onclick="saveXtream()">Save Server</button>
+            <button class="update-xtream-btn" id="updateXtreamBtn" style="display:none" onclick="updateXtream()">Update Server</button>
+            <button class="cancel-xtream-btn" onclick="toggleXtreamForm()">Cancel</button>
+        </div>
+    </div>
+        
+    <div id="xtreamList"></div>
+</div>
+
+<!-- User Management Page -->
+<div class="dashboard hidden" id="users">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-users logo-icon"></i></div>
+    <h1 class="title">User Management</h1>
+    
+    <div class="users-grid" id="userList"></div>
+</div>
+
+<!-- Tutorial Videos Page -->
+<div class="dashboard hidden" id="videos">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-video logo-icon"></i></div>
+    <h1 class="title">Tutorial Videos</h1>
+    
+    <button class="add-video-btn" id="addVideoBtn" style="display:none" onclick="toggleVideoForm()">
+        <i class="fas fa-plus"></i> Add New Video
+    </button>
+    
+    <div class="video-form" id="videoForm" style="display:none">
+        <h3 style="color:var(--accent);margin-bottom:12px; font-size:0.95rem; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);" id="videoFormTitle">Add New Video</h3>
+        
+        <input type="text" id="videoTitle" placeholder="Video Title">
+        <textarea id="videoDescription" placeholder="Video Description"></textarea>
+        <input type="text" id="videoUrl" placeholder="YouTube URL (e.g., https://www.youtube.com/watch?v=...)">
+        <input type="text" id="videoThumbnail" placeholder="Thumbnail URL (optional)">
+        
+        <div class="video-form-buttons">
+            <button class="save-video-btn" id="saveVideoBtn" onclick="saveVideo()">Save Video</button>
+            <button class="update-video-btn" id="updateVideoBtn" style="display:none" onclick="updateVideo()">Update Video</button>
+            <button class="cancel-video-btn" onclick="toggleVideoForm()">Cancel</button>
+        </div>
+    </div>
+    
+    <div class="videos-grid" id="videosList"></div>
+</div>
+
+<!-- Statistics Page -->
+<div class="dashboard hidden" id="stats">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-chart-bar logo-icon"></i></div>
+    <h1 class="title">Statistics</h1>
+    
+    <div class="stats-grid" id="statsContent"></div>
+</div>
+
+<!-- Settings Page -->
+<div class="dashboard hidden" id="settings">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-cogs logo-icon"></i></div>
+    <h1 class="title">Settings</h1>
+    
+    <div class="settings-grid" id="settingsContent"></div>
+</div>
+
+<!-- Live Chat Page -->
+<div class="dashboard hidden" id="liveChat">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-comments logo-icon"></i></div>
+    <h1 class="title">Live Chat</h1>
+    
+    <div class="chat-grid">
+        <div class="online-users">
+            <h3 style="color:var(--success);margin-bottom:15px; text-align:center; text-shadow: 0 0 10px rgba(0, 255, 157, 0.6);">
+                <i class="fas fa-users"></i> Online Users
+            </h3>
+            <div id="onlineUsersList">
+                <!-- قائمة المستخدمين المتصلين -->
+            </div>
+        </div>
+        
+        <div class="chat-container">
+            <div class="chat-header">
+                <h3 style="color:var(--accent); text-align:center; text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);">
+                    <i class="fas fa-comment-dots"></i> Support Chat
+                </h3>
+                <p style="text-align:center; color:var(--secondary); font-size:0.9rem; margin-top:5px;">
+                    Real-time chat with support team
+                </p>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <!-- الرسائل ستظهر هنا -->
+            </div>
+            
+            <div class="chat-input-area">
+                <div class="chat-input">
+                    <input type="text" id="chatInput" placeholder="Type your message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                    <button onclick="sendChatMessage()">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Knowledge Base Page -->
+<div class="dashboard hidden" id="knowledgeBase">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-book logo-icon"></i></div>
+    <h1 class="title">Knowledge Base</h1>
+    
+    <div class="search-box">
+        <input type="text" id="knowledgeSearch" placeholder="Search knowledge base...">
+        <button onclick="searchKnowledge()">
+            <i class="fas fa-search"></i> Search
+        </button>
+    </div>
+    
+    <div class="knowledge-container">
+        <div id="knowledgeContent">
+            <!-- محتوى قاعدة المعارف -->
+        </div>
+    </div>
+</div>
+
+<!-- Ticket System Page -->
+<div class="dashboard hidden" id="ticketSystem">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    <div class="logo-circle"><i class="fas fa-ticket-alt logo-icon"></i></div>
+    <h1 class="title">Ticket System</h1>
+    
+    <button class="neon-btn" onclick="showNewTicketModal()" style="margin-bottom:20px;">
+        <i class="fas fa-plus"></i> Create New Ticket
+    </button>
+    
+    <div class="tickets-grid" id="ticketsList">
+        <!-- قائمة التذاكر -->
+    </div>
+</div>
+
+<!-- Video Player -->
+<div class="video-player-overlay hidden" id="videoPlayer">
+    <div class="video-player-container">
+        <div class="video-player-header">
+            <div class="video-player-title" id="playerTitle">Video Title</div>
+            <button class="close-player" onclick="closeVideoPlayer()">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+        <div class="video-player-content" id="playerContent"></div>
+        <div class="video-player-description" id="playerDescription">
+            Video Description
+        </div>
+    </div>
+</div>
+
+<!-- نافذة إنشاء تذكرة جديدة -->
+<div class="modal-overlay hidden" id="newTicketModal">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeNewTicketModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <div class="modal-logo">
+                <div class="phantom-text">THE PHANTOM</div>
+                <div class="dz-iptv-main">DZ-IPTV</div>
+            </div>
+            <h2 class="modal-title">Create New Ticket</h2>
+            <i class="fas fa-ticket-alt confirm-icon" style="color:var(--warning)"></i>
+        </div>
+        
+        <div class="modal-message">
+            Please provide details about your issue. Our support team will respond as soon as possible.
+        </div>
+        
+        <input type="text" id="ticketSubject" class="modal-input" placeholder="Ticket Subject">
+        <select id="ticketPriority" class="modal-input">
+            <option value="low">Low Priority</option>
+            <option value="medium" selected>Medium Priority</option>
+            <option value="high">High Priority</option>
+        </select>
+        <textarea id="ticketDescription" class="modal-input" placeholder="Describe your issue in detail..." rows="4" style="height:auto;"></textarea>
+        
+        <div class="modal-buttons">
+            <button class="modal-btn modal-cancel" onclick="closeNewTicketModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="modal-btn modal-confirm" onclick="createNewTicket()">
+                <i class="fas fa-check"></i> Create Ticket
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة عرض تفاصيل التذكرة -->
+<div class="modal-overlay hidden" id="ticketDetailsModal">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeTicketDetailsModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <div class="modal-logo">
+                <div class="phantom-text">THE PHANTOM</div>
+                <div class="dz-iptv-main">DZ-IPTV</div>
+            </div>
+            <h2 class="modal-title" id="ticketDetailsTitle">Ticket Details</h2>
+            <i class="fas fa-ticket-alt confirm-icon" style="color:var(--info)"></i>
+        </div>
+        
+        <div class="modal-message" id="ticketDetailsContent">
+            <!-- تفاصيل التذكرة -->
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="modal-btn modal-cancel" onclick="closeTicketDetailsModal()">
+                <i class="fas fa-times"></i> Close
+            </button>
+            <button class="modal-btn modal-confirm" onclick="closeTicketWithResponse()" id="closeTicketBtn" style="display:none;">
+                <i class="fas fa-check"></i> Close Ticket
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة الحذف -->
+<div class="modal-overlay hidden" id="deleteModal">
+    <div class="modal-container delete-modal">
+        <button class="modal-close" onclick="closeDeleteModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <div class="modal-logo">
+                <div class="phantom-text">THE PHANTOM</div>
+                <div class="dz-iptv-main">DZ-IPTV</div>
+            </div>
+            <h2 class="modal-title">Confirm Deletion</h2>
+            <i class="fas fa-trash-alt delete-icon"></i>
+        </div>
+        
+        <div class="modal-message" id="deleteMessage">
+            Are you sure you want to delete this item?
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="modal-btn modal-cancel" onclick="closeDeleteModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="modal-btn modal-confirm" onclick="confirmDelete()">
+                <i class="fas fa-check"></i> Confirm Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة نسيان كلمة المرور -->
+<div class="modal-overlay hidden" id="forgotPasswordModal">
+    <div class="modal-container forgot-modal">
+        <button class="modal-close" onclick="closeForgotPasswordModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <div class="modal-logo">
+                <div class="phantom-text">THE PHANTOM</div>
+                <div class="dz-iptv-main">DZ-IPTV</div>
+            </div>
+            <h2 class="modal-title">Password Recovery</h2>
+            <i class="fas fa-key forgot-icon"></i>
+        </div>
+        
+        <div class="modal-message">
+            Enter your username to reset your password.
+        </div>
+        
+        <input type="text" id="forgotUsername" class="modal-input" placeholder="Enter username">
+        <input type="password" id="newPassword" class="modal-input" placeholder="New password">
+        <input type="password" id="confirmNewPassword" class="modal-input" placeholder="Confirm new password">
+        
+        <div class="modal-buttons">
+            <button class="modal-btn modal-cancel" onclick="closeForgotPasswordModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="modal-btn modal-confirm" onclick="resetPassword()">
+                <i class="fas fa-redo"></i> Reset Password
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة التأكيد العامة -->
+<div class="modal-overlay hidden" id="confirmModal">
+    <div class="modal-container confirm-modal">
+        <button class="modal-close" onclick="closeConfirmModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <div class="modal-logo">
+                <div class="phantom-text">THE PHANTOM</div>
+                <div class="dz-iptv-main">DZ-IPTV</div>
+            </div>
+            <h2 class="modal-title" id="confirmModalTitle">Confirmation</h2>
+            <i class="fas fa-question-circle confirm-icon"></i>
+        </div>
+        
+        <div class="modal-message" id="confirmModalMessage">
+            Are you sure you want to proceed?
+        </div>
+        
+        <div class="modal-buttons">
+            <button class="modal-btn modal-cancel" onclick="closeConfirmModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="modal-btn modal-confirm" onclick="confirmAction()">
+                <i class="fas fa-check"></i> Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة تغيير اسم المدير -->
+<div class="modal-overlay hidden" id="changeUsernameModal">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeChangeUsernameModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="modal-header">
+            <div class="modal-logo">
+                <div class="phantom-text">THE PHANTOM</div>
+                <div class="dz-iptv-main">DZ-IPTV</div>
+            </div>
+            <h2 class="modal-title">Change Admin Username</h2>
+            <i class="fas fa-user-edit confirm-icon" style="color:var(--info)"></i>
+        </div>
+        
+        <div class="modal-message">
+            Changing the admin username is a sensitive action. Please confirm your password.
+        </div>
+        
+        <input type="text" id="modalNewUsername" class="modal-input" placeholder="New username">
+        <input type="password" id="modalConfirmPassword" class="modal-input" placeholder="Your current password">
+        
+        <div class="modal-buttons">
+            <button class="modal-btn modal-cancel" onclick="closeChangeUsernameModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="modal-btn modal-confirm" onclick="confirmChangeUsername()">
+                <i class="fas fa-check"></i> Change Username
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="notif" id="notif">Done!</div>
+
+<!-- Script.js بعد Firebase -->
+<script src="script.js"></script>
+
+<!-- تهيئة Firebase Auth Listener -->
+<script>
+    // هذا سكريبت إضافي للتحكم في حالة المستخدم
+    document.addEventListener('DOMContentLoaded', function() {
+        // التحقق من حالة تسجيل الدخول عند تحميل الصفحة
+        if (window.firebase && window.firebase.auth) {
+            window.firebase.authMethods.onAuthStateChanged(window.firebase.auth, (user) => {
+                if (user) {
+                    // المستخدم مسجل الدخول
+                    console.log('User is logged in:', user.email);
+                    // يمكنك إضافة منطق لإظهار Dashboard تلقائياً
+                } else {
+                    // المستخدم غير مسجل الدخول
+                    console.log('User is not logged in');
+                }
+            });
+        }
+        
+        // تحديث التاريخ والوقت
+        function updateDateTime() {
+            const now = new Date();
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            
+            const currentDate = now.toLocaleDateString('en-US', dateOptions);
+            const currentTime = now.toLocaleTimeString('en-US', timeOptions);
+            
+            // تحديث جميع عناصر التاريخ والوقت
+            const dateElements = document.querySelectorAll('.current-date, #currentDate, #dashboardDate');
+            const timeElements = document.querySelectorAll('.current-time, #currentTime, #dashboardTime');
+            
+            dateElements.forEach(el => {
+                if (el) el.textContent = currentDate;
+            });
+            
+            timeElements.forEach(el => {
+                if (el) el.textContent = currentTime;
+            });
+        }
+        
+        // تحديث التاريخ والوقت كل ثانية
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+    });
+</script>
+
+</body>
+</html>
